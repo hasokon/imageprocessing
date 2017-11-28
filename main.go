@@ -23,6 +23,9 @@ const (
 var a float64 = -1.0
 
 func calcWeightBicubic(t float64) float64 {
+	if t < 0 {
+		t = t * -1
+	}
 	if t <= 1 {
 		return (a+2)*t*t*t - (a+3)*t*t + 1
 	}
@@ -88,12 +91,12 @@ func bicubic(src image.Image, magnification float64, x, y int) color.Color {
 
 	dx[0] = calcWeightBicubic(originX - float64(x0-1))
 	dx[1] = calcWeightBicubic(originX - float64(x0))
-	dx[2] = calcWeightBicubic(float64(x0+1) - originX)
-	dx[3] = calcWeightBicubic(float64(x0+2) - originX)
+	dx[2] = calcWeightBicubic(originX - float64(x0+1))
+	dx[3] = calcWeightBicubic(originX - float64(x0+2))
 	dy[0] = calcWeightBicubic(originY - float64(y0-1))
 	dy[1] = calcWeightBicubic(originY - float64(y0))
-	dy[2] = calcWeightBicubic(float64(y0+1) - originY)
-	dy[3] = calcWeightBicubic(float64(y0+2) - originY)
+	dy[2] = calcWeightBicubic(originY - float64(y0+1))
+	dy[3] = calcWeightBicubic(originY - float64(y0+2))
 
 	weight := make([]float64, 16)
 
@@ -117,18 +120,24 @@ func bicubic(src image.Image, magnification float64, x, y int) color.Color {
 	weight[14] = dx[2] * dy[3]
 	weight[15] = dx[3] * dy[3]
 
-	newR := float64(0)
-	newG := float64(0)
-	newB := float64(0)
-	newA := float64(0)
+	newColor := make([]float64, 4)
 	for i := 0; i < 16; i++ {
-		newR = newR + float64(r[i]>>8)*weight[i]
-		newG = newG + float64(g[i]>>8)*weight[i]
-		newB = newB + float64(b[i]>>8)*weight[i]
-		newA = newA + float64(a[i]>>8)*weight[i]
+		newColor[0] = newColor[0] + float64(r[i]>>8)*weight[i]
+		newColor[1] = newColor[1] + float64(g[i]>>8)*weight[i]
+		newColor[2] = newColor[2] + float64(b[i]>>8)*weight[i]
+		newColor[3] = newColor[3] + float64(a[i]>>8)*weight[i]
+		//fmt.Printf("%d, %.30f\n", i, weight[i])
 	}
 
-	return color.RGBA{uint8(newR), uint8(newG), uint8(newB), uint8(newA)}
+	for i := 0; i < 4; i++ {
+		if newColor[i] < 0 {
+			newColor[i] = 0
+		} else if newColor[i] > 255 {
+			newColor[i] = 255
+		}
+	}
+
+	return color.RGBA{uint8(newColor[0]), uint8(newColor[1]), uint8(newColor[2]), uint8(newColor[3])}
 }
 
 func bilinear(src image.Image, magnification float64, x, y int) color.Color {
