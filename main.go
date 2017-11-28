@@ -21,6 +21,7 @@ const (
 )
 
 var a float64 = -1.0
+var ratio float64 = 2
 
 func calcWeightBicubic(t float64) float64 {
 	if t < 0 {
@@ -126,7 +127,6 @@ func bicubic(src image.Image, magnification float64, x, y int) color.Color {
 		newColor[1] = newColor[1] + float64(g[i]>>8)*weight[i]
 		newColor[2] = newColor[2] + float64(b[i]>>8)*weight[i]
 		newColor[3] = newColor[3] + float64(a[i]>>8)*weight[i]
-		//fmt.Printf("%d, %.30f\n", i, weight[i])
 	}
 
 	for i := 0; i < 4; i++ {
@@ -242,19 +242,28 @@ func enlargement(src image.Image, magnification float64, algo int) image.Image {
 
 func main() {
 
-	file, _ := os.Open("./source.jpg")
+	file, _ := os.Open("./origin.jpg")
 	defer file.Close()
 
-	srcImg, _, err := image.Decode(file)
+	orgImg, _, err := image.Decode(file)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "Image File Decode Error")
 		return
 	}
 
+	s, _ := os.Create("source.jpg")
+	defer s.Close()
+
+	srcImg := enlargement(orgImg, 1/ratio, NEAREST_NAIGHBOR)
+	err = jpeg.Encode(s, srcImg, &jpeg.Options{100})
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "File Write Error")
+	}
+
 	nn, _ := os.Create("nearest_naighbor.jpg")
 	defer nn.Close()
 
-	err = jpeg.Encode(nn, enlargement(srcImg, 2.0, NEAREST_NAIGHBOR), &jpeg.Options{100})
+	err = jpeg.Encode(nn, enlargement(srcImg, ratio, NEAREST_NAIGHBOR), &jpeg.Options{100})
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "File Write Error")
 	}
@@ -262,14 +271,14 @@ func main() {
 	bl, _ := os.Create("bilinear.jpg")
 	defer bl.Close()
 
-	err = jpeg.Encode(bl, enlargement(srcImg, 2.0, BILINEAR), &jpeg.Options{100})
+	err = jpeg.Encode(bl, enlargement(srcImg, ratio, BILINEAR), &jpeg.Options{100})
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "File Write Error")
 	}
 	bc, _ := os.Create("bicubic.jpg")
 	defer bc.Close()
 
-	err = jpeg.Encode(bc, enlargement(srcImg, 2.0, BICUBIC), &jpeg.Options{100})
+	err = jpeg.Encode(bc, enlargement(srcImg, ratio, BICUBIC), &jpeg.Options{100})
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "File Write Error")
 	}
